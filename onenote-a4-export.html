@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notizen → A4 · OneNote-Export-Reparatur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --paper:#f6f3ec;
+  --paper-2:#efeadf;
+  --ink:#1c2433;
+  --ink-soft:#5a6478;
+  --line:#d8d1c2;
+  --accent:#2f4a7a;
+  --accent-2:#c0623a;
+  --gold:#b88a2e;
+  --ok:#3f7d5a;
+  --shadow:0 1px 2px rgba(28,36,51,.06),0 12px 32px rgba(28,36,51,.10);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:"Spline Sans",sans-serif;
+  background:
+    radial-gradient(120% 90% at 90% -10%, rgba(192,98,58,.06), transparent 60%),
+    radial-gradient(110% 80% at -10% 110%, rgba(47,74,122,.07), transparent 55%),
+    var(--paper);
+  color:var(--ink);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:38px 22px 90px}
+
+/* Header */
+header{margin-bottom:30px}
+.kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent-2);font-weight:600;margin-bottom:8px}
+h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.02;margin:0 0 12px;letter-spacing:-.01em}
+h1 em{font-style:italic;color:var(--accent)}
+.sub{color:var(--ink-soft);max-width:62ch;font-size:15.5px}
+.sub b{color:var(--ink);font-weight:600}
+
+.grid{display:grid;grid-template-columns:340px 1fr;gap:26px;align-items:start}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+.card{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(2px)}
+.card-pad{padding:20px}
+.card h2{font-family:"Fraunces",serif;font-weight:600;font-size:19px;margin:0 0 4px}
+.card .hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 16px}
+
+/* Drop zone */
+#drop{
+  border:1.5px dashed var(--accent);border-radius:12px;padding:26px 18px;text-align:center;
+  cursor:pointer;transition:.18s;background:rgba(47,74,122,.035)
+}
+#drop:hover{background:rgba(47,74,122,.07)}
+#drop.drag{background:rgba(192,98,58,.09);border-color:var(--accent-2)}
+#drop .big{font-family:"Fraunces",serif;font-size:17px;margin-bottom:4px}
+#drop .small{font-size:12.5px;color:var(--ink-soft)}
+#drop svg{width:34px;height:34px;color:var(--accent);margin-bottom:8px}
+#files{margin-top:12px;font-size:12.5px;color:var(--ink-soft);text-align:left}
+#files .f{display:flex;justify-content:space-between;gap:8px;padding:5px 9px;background:var(--paper-2);border-radius:7px;margin-top:5px}
+#files .f span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Controls */
+.field{margin-top:16px}
+.field:first-child{margin-top:0}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;letter-spacing:.01em}
+.field .v{float:right;color:var(--accent);font-weight:600}
+select,input[type=text],input[type=number]{
+  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;
+  font-family:inherit;font-size:14px;color:var(--ink)
+}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{
+  flex:1;min-width:60px;padding:8px 6px;border:1px solid var(--line);background:#fff;border-radius:9px;
+  font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--ink-soft);transition:.15s
+}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.swatches{display:flex;gap:8px}
+.swatches button{width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer}
+.swatches button.on{border-color:var(--ink)}
+.check{display:flex;align-items:center;gap:9px;font-size:13.5px;cursor:pointer;user-select:none}
+.check input{width:17px;height:17px;accent-color:var(--accent)}
+
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:18px;
+  padding:13px;border:none;border-radius:11px;background:var(--accent);color:#fff;
+  font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:.15s;box-shadow:var(--shadow)
+}
+.btn:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+.btn.export{background:var(--accent-2)}
+
+/* Output / preview */
+#stage{min-height:340px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:340px;color:var(--ink-soft);padding:30px}
+.empty .pg{width:74px;height:104px;border:2px solid var(--line);border-radius:6px;position:relative;margin-bottom:18px;background:#fff;overflow:hidden}
+.empty .pg::before,.empty .pg::after{content:"";position:absolute;inset:0;background:
+  repeating-linear-gradient(0deg,transparent 0 11px,var(--line) 11px 12px),
+  repeating-linear-gradient(90deg,transparent 0 11px,var(--line) 11px 12px)}
+.empty .pg::after{background:repeating-linear-gradient(0deg,transparent 0 22px,var(--accent) 22px 23px,transparent 23px 46px);opacity:.25;mix-blend-mode:multiply}
+.empty h3{font-family:"Fraunces",serif;color:var(--ink);font-size:18px;margin:0 0 6px}
+.empty p{margin:0;max-width:42ch;font-size:13.5px}
+
+.howto{margin-top:20px;border-top:1px solid var(--line);padding-top:16px;text-align:left;width:100%;max-width:480px}
+.howto b{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-2)}
+.howto ol{margin:10px 0 0;padding-left:18px;font-size:13px;color:var(--ink-soft)}
+.howto li{margin-bottom:5px}
+.howto code{background:var(--paper-2);padding:1px 6px;border-radius:5px;font-size:12px;color:var(--ink)}
+
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.bar .count{font-family:"Fraunces",serif;font-size:18px}
+.bar .count small{font-family:"Spline Sans";font-size:13px;color:var(--ink-soft);font-weight:400}
+.bar .acts{display:flex;gap:8px;flex-wrap:wrap}
+.bar .acts button{padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:8px;font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--ink-soft)}
+.bar .acts button:hover{border-color:var(--accent);color:var(--accent)}
+
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.thumb{position:relative;cursor:pointer;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:#fff;transition:.15s;box-shadow:0 4px 12px rgba(28,36,51,.06)}
+.thumb img{display:block;width:100%}
+.thumb .ix{position:absolute;top:6px;left:6px;background:rgba(28,36,51,.78);color:#fff;font-size:11px;padding:2px 7px;border-radius:20px}
+.thumb .tick{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.thumb .tick svg{width:13px;height:13px;color:#fff;opacity:0}
+.thumb.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 6px 16px rgba(47,74,122,.18)}
+.thumb.on .tick{background:var(--accent);border-color:var(--accent)}
+.thumb.on .tick svg{opacity:1}
+.thumb.blank::after{content:"leer?";position:absolute;bottom:6px;left:6px;background:var(--gold);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px}
+.thumb:not(.on){opacity:.5}
+
+.progress{height:6px;background:var(--paper-2);border-radius:20px;overflow:hidden;margin-top:14px}
+.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .2s}
+#status{font-size:12.5px;color:var(--ink-soft);margin-top:8px;min-height:16px}
+.foot{margin-top:40px;text-align:center;font-size:12px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">OneNote-Export · Reparatur</div>
+    <h1>Endlos-Seite raus,<br><em>echte A4-Seiten</em> rein.</h1>
+    <p class="sub">OneNote am Mac speichert deine Notiz als <b>eine riesige Seite</b> – ohne Karo, ohne Linien, nicht druckbar. Wirf die PDF (oder Screenshots) hier rein: das Tool zerlegt alles in saubere A4-Seiten und legt dir <b>Karo, Linien oder Punktraster</b> wieder darunter.</p>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div>
+      <div class="card card-pad">
+        <h2>1 · Datei</h2>
+        <p class="hint">PDF aus OneNote oder Bilder (PNG/JPG)</p>
+        <div id="drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+          <div class="big">Hierher ziehen</div>
+          <div class="small">oder klicken zum Auswählen</div>
+        </div>
+        <input type="file" id="fileInput" accept="application/pdf,image/*" multiple hidden>
+        <div id="files"></div>
+      </div>
+
+      <div class="card card-pad" style="margin-top:18px">
+        <h2>2 · Einstellungen</h2>
+        <p class="hint">Standard passt für die meisten Mitschriften</p>
+
+        <div class="field">
+          <label>Seitenformat</label>
+          <div class="seg" id="segFormat">
+            <button data-v="A4" class="on">A4</button>
+            <button data-v="A5">A5</button>
+            <button data-v="A3">A3</button>
+            <button data-v="Letter">Letter</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Ausrichtung</label>
+          <div class="seg" id="segOrient">
+            <button data-v="p" class="on">Hochformat</button>
+            <button data-v="l">Querformat</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Hintergrund</label>
+          <div class="seg" id="segBg">
+            <button data-v="karo" class="on">Kariert</button>
+            <button data-v="liniert">Liniert</button>
+            <button data-v="punkt">Punkte</button>
+            <button data-v="none">Keiner</button>
+          </div>
+        </div>
+
+        <div class="field" id="spacingField">
+          <label>Raster-Abstand <span class="v" id="spacingV">5 mm</span></label>
+          <input type="range" id="spacing" min="4" max="12" step="0.5" value="5">
+        </div>
+
+        <div class="field" id="colorField">
+          <label>Linienfarbe</label>
+          <div class="swatches" id="swatches">
+            <button data-c="#9db4d6" style="background:#9db4d6" class="on"></button>
+            <button data-c="#a9b3c4" style="background:#a9b3c4"></button>
+            <button data-c="#cdbf9a" style="background:#cdbf9a"></button>
+            <button data-c="#d99a9a" style="background:#d99a9a"></button>
+            <button data-c="#c8c8c8" style="background:#c8c8c8"></button>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>Rand <span class="v" id="marginV">8 mm</span></label>
+            <input type="range" id="margin" min="0" max="25" step="1" value="8">
+          </div>
+          <div class="field">
+            <label>Überlappung <span class="v" id="overlapV">4 mm</span></label>
+            <input type="range" id="overlap" min="0" max="20" step="1" value="4">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Qualität (DPI)</label>
+          <div class="seg" id="segDpi">
+            <button data-v="150">150</button>
+            <button data-v="200" class="on">200</button>
+            <button data-v="300">300</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="check"><input type="checkbox" id="dropBlank" checked> Leere Seiten automatisch abwählen</label>
+        </div>
+
+        <button class="btn" id="processBtn" disabled>Aufteilen &amp; Vorschau</button>
+        <div class="progress" style="display:none" id="progWrap"><span id="prog"></span></div>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: output -->
+    <div class="card card-pad" id="stage">
+      <div class="empty" id="empty">
+        <div class="pg"></div>
+        <h3>Noch keine Seiten</h3>
+        <p>Lade links deine OneNote-PDF und drücke „Aufteilen &amp; Vorschau“. Die fertigen A4-Seiten erscheinen hier zur Auswahl.</p>
+        <div class="howto">
+          <b>So holst du die PDF aus OneNote (Mac)</b>
+          <ol>
+            <li>Seite öffnen → <code>Datei</code> → <code>Drucken</code></li>
+            <li>Links unten <code>PDF</code> → <code>Als PDF sichern</code></li>
+            <li>Diese (oft sehr lange) PDF hier hochladen</li>
+          </ol>
+        </div>
+      </div>
+
+      <div id="result" style="display:none">
+        <div class="bar">
+          <div class="count"><span id="selCount">0</span><small id="ofCount"> / 0 Seiten gewählt</small></div>
+          <div class="acts">
+            <button id="selAll">Alle</button>
+            <button id="selNone">Keine</button>
+            <button id="selFull">Nur volle</button>
+          </div>
+        </div>
+        <div class="pages" id="pages"></div>
+        <button class="btn export" id="exportBtn" style="margin-top:22px">Als A4-PDF exportieren</button>
+        <div class="field" style="margin-top:12px">
+          <input type="text" id="filename" value="Notizen_A4.pdf">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Alles passiert lokal in deinem Browser · keine Uploads, keine Server.</div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const FORMATS = { A4:[210,297], A5:[148,210], A3:[297,420], Letter:[215.9,279.4] };
+const state = {
+  files: [],
+  format:"A4", orient:"p", bg:"karo", spacing:5, color:"#9db4d6",
+  margin:8, overlap:4, dpi:200, dropBlank:true,
+  pages:[] // {full, thumb, blank, include}
+};
+
+/* ---------- UI wiring ---------- */
+const $ = s => document.querySelector(s);
+function seg(id, key, cast=(v)=>v){
+  const box = $(id);
+  box.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    [...box.children].forEach(c=>c.classList.remove("on"));
+    b.classList.add("on");
+    state[key] = cast(b.dataset.v);
+    if(key==="bg") $("#spacingField").style.display = state.bg==="none"?"none":"block",
+                   $("#colorField").style.display = state.bg==="none"?"none":"block";
+  });
+}
+seg("#segFormat","format");
+seg("#segOrient","orient");
+seg("#segBg","bg");
+seg("#segDpi","dpi",v=>+v);
+
+$("#swatches").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  [...$("#swatches").children].forEach(c=>c.classList.remove("on"));
+  b.classList.add("on"); state.color=b.dataset.c;
+});
+function slider(id, key, vId, unit){
+  $(id).addEventListener("input",e=>{ state[key]=+e.target.value; $(vId).textContent=e.target.value+unit; });
+}
+slider("#spacing","spacing","#spacingV"," mm");
+slider("#margin","margin","#marginV"," mm");
+slider("#overlap","overlap","#overlapV"," mm");
+$("#dropBlank").addEventListener("change",e=>state.dropBlank=e.target.checked);
+
+/* ---------- File handling ---------- */
+const drop=$("#drop"), input=$("#fileInput");
+drop.addEventListener("click",()=>input.click());
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("drag");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("drag");}));
+drop.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
+input.addEventListener("change",e=>addFiles(e.target.files));
+
+function addFiles(list){
+  for(const f of list){
+    if(f.type==="application/pdf" || f.type.startsWith("image/")) state.files.push(f);
+  }
+  renderFiles();
+}
+function renderFiles(){
+  const box=$("#files"); box.innerHTML="";
+  state.files.forEach((f,i)=>{
+    const d=document.createElement("div"); d.className="f";
+    d.innerHTML=`<span>${f.name}</span><a href="#" data-i="${i}" style="color:var(--accent-2);text-decoration:none">✕</a>`;
+    box.appendChild(d);
+  });
+  box.querySelectorAll("a").forEach(a=>a.addEventListener("click",e=>{
+    e.preventDefault(); state.files.splice(+a.dataset.i,1); renderFiles();
+  }));
+  $("#processBtn").disabled = state.files.length===0;
+}
+
+/* ---------- Grid drawing ---------- */
+function mm2px(mm,dpi){ return mm*dpi/25.4; }
+function drawGrid(ctx,w,h,dpi){
+  if(state.bg==="none") return;
+  const step=mm2px(state.spacing,dpi);
+  const lw=Math.max(1, dpi/170);
+  ctx.save();
+  ctx.strokeStyle=state.color; ctx.fillStyle=state.color; ctx.lineWidth=lw;
+  if(state.bg==="liniert"){
+    for(let y=step; y<h; y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  } else if(state.bg==="karo"){
+    for(let y=step; y<h; y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    for(let x=step; x<w; x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  } else if(state.bg==="punkt"){
+    const r=Math.max(.8, dpi/300);
+    for(let y=step; y<h; y+=step) for(let x=step; x<w; x+=step){
+      ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------- Core: build a finished output page from a source strip ---------- */
+function buildPage(stripCanvas, pageWpx, pageHpx, marginPx, dpi){
+  const out=document.createElement("canvas");
+  out.width=pageWpx; out.height=pageHpx;
+  const ctx=out.getContext("2d");
+  ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,pageWpx,pageHpx);
+  drawGrid(ctx,pageWpx,pageHpx,dpi);            // grid first…
+  ctx.globalCompositeOperation="multiply";       // …content on top, white reveals grid
+  ctx.drawImage(stripCanvas, marginPx, marginPx);
+  ctx.globalCompositeOperation="source-over";
+  return out;
+}
+
+function isBlank(canvas){
+  const c=canvas.getContext("2d");
+  const {width:w,height:h}=canvas;
+  const sx=Math.max(1,Math.floor(w/200)), sy=Math.max(1,Math.floor(h/280));
+  let dark=0,total=0;
+  const data=c.getImageData(0,0,w,h).data;
+  for(let y=0;y<h;y+=sy) for(let x=0;x<w;x+=sx){
+    const i=(y*w+x)*4; total++;
+    if(data[i]<242||data[i+1]<242||data[i+2]<242) dark++;
+  }
+  return dark/total < 0.0018;
+}
+
+/* ---------- Process pipeline ---------- */
+let busy=false;
+async function process(){
+  if(busy) return; busy=true;
+  state.pages=[];
+  const dpi=state.dpi, margin=state.margin, overlap=state.overlap;
+  let [pw,ph]=FORMATS[state.format];
+  if(state.orient==="l"){ [pw,ph]=[ph,pw]; }
+  const pageWpx=Math.round(mm2px(pw,dpi)), pageHpx=Math.round(mm2px(ph,dpi));
+  const marginPx=Math.round(mm2px(margin,dpi));
+  const contentWpx=pageWpx-2*marginPx, contentHpx=pageHpx-2*marginPx;
+  const overlapPx=Math.round(mm2px(overlap,dpi));
+  const advance=Math.max(40, contentHpx-overlapPx);
+
+  $("#progWrap").style.display="block";
+  const setProg=(p,t)=>{ $("#prog").style.width=(p*100).toFixed(1)+"%"; $("#status").textContent=t||""; };
+
+  // Build a flat list of "source canvases" (full-resolution rendered sources)
+  const sources=[]; // {canvas}
+  let unit=0, totalUnits=0;
+
+  // first pass: rough total = #files (for progress smoothing we update per strip too)
+  for(let fi=0; fi<state.files.length; fi++){
+    const f=state.files[fi];
+    setProg(fi/state.files.length, `Lese ${f.name} …`);
+    if(f.type==="application/pdf"){
+      const buf=await f.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+      for(let p=1;p<=pdf.numPages;p++){
+        const page=await pdf.getPage(p);
+        const vp1=page.getViewport({scale:1});
+        const scale=contentWpx/vp1.width;
+        const vp=page.getViewport({scale});
+        const fullH=Math.ceil(vp.height);
+        const nStrips=Math.max(1, Math.ceil((fullH)/advance));
+        for(let s=0;s<nStrips;s++){
+          const offY=s*advance;
+          if(offY>=fullH && s>0) break;
+          const c=document.createElement("canvas");
+          c.width=contentWpx; c.height=contentHpx;
+          const ctx=c.getContext("2d");
+          ctx.fillStyle="#fff"; ctx.fillRect(0,0,contentWpx,contentHpx);
+          await page.render({canvasContext:ctx, viewport:vp, transform:[1,0,0,1,0,-offY]}).promise;
+          sources.push(c);
+          setProg((fi+ (p/pdf.numPages))/state.files.length, `Verarbeite Seite ${p}/${pdf.numPages} · Abschnitt ${s+1}`);
+          await new Promise(r=>setTimeout(r,0));
+        }
+      }
+    } else { // image
+      const img=await loadImage(f);
+      const scale=contentWpx/img.width;
+      const fullH=Math.ceil(img.height*scale);
+      const nStrips=Math.max(1, Math.ceil(fullH/advance));
+      for(let s=0;s<nStrips;s++){
+        const offY=s*advance;
+        const c=document.createElement("canvas");
+        c.width=contentWpx; c.height=contentHpx;
+        const ctx=c.getContext("2d");
+        ctx.fillStyle="#fff"; ctx.fillRect(0,0,contentWpx,contentHpx);
+        ctx.drawImage(img,0,-offY,img.width*scale,img.height*scale);
+        sources.push(c);
+        await new Promise(r=>setTimeout(r,0));
+      }
+    }
+  }
+
+  // second pass: compose final pages + thumbnails
+  for(let i=0;i<sources.length;i++){
+    const blank=isBlank(sources[i]);
+    const pageCanvas=buildPage(sources[i], pageWpx, pageHpx, marginPx, dpi);
+    const full=pageCanvas.toDataURL("image/jpeg",0.85);
+    // thumbnail
+    const th=document.createElement("canvas");
+    const tw=300, thh=Math.round(tw*pageHpx/pageWpx);
+    th.width=tw; th.height=thh;
+    th.getContext("2d").drawImage(pageCanvas,0,0,tw,thh);
+    const thumb=th.toDataURL("image/jpeg",0.7);
+    state.pages.push({ full, thumb, blank, include: state.dropBlank? !blank : true, pw, ph, orient:state.orient });
+    setProg(i/sources.length, `Erzeuge A4-Seite ${i+1}/${sources.length}`);
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  setProg(1,`Fertig · ${sources.length} Seiten`);
+  setTimeout(()=>{$("#progWrap").style.display="none"; $("#status").textContent="";},900);
+  renderPages();
+  busy=false;
+}
+
+function loadImage(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>res(img); img.onerror=rej;
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+/* ---------- Preview ---------- */
+function renderPages(){
+  $("#empty").style.display="none";
+  $("#result").style.display="block";
+  const wrap=$("#pages"); wrap.innerHTML="";
+  state.pages.forEach((pg,i)=>{
+    const d=document.createElement("div");
+    d.className="thumb"+(pg.include?" on":"")+(pg.blank?" blank":"");
+    d.innerHTML=`<img src="${pg.thumb}"><div class="ix">${i+1}</div>
+      <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>`;
+    d.addEventListener("click",()=>{ pg.include=!pg.include; renderPages(); });
+    wrap.appendChild(d);
+  });
+  updateCount();
+}
+function updateCount(){
+  const sel=state.pages.filter(p=>p.include).length;
+  $("#selCount").textContent=sel;
+  $("#ofCount").textContent=` / ${state.pages.length} Seiten gewählt`;
+  $("#exportBtn").disabled = sel===0;
+}
+$("#selAll").addEventListener("click",()=>{state.pages.forEach(p=>p.include=true);renderPages();});
+$("#selNone").addEventListener("click",()=>{state.pages.forEach(p=>p.include=false);renderPages();});
+$("#selFull").addEventListener("click",()=>{state.pages.forEach(p=>p.include=!p.blank);renderPages();});
+
+/* ---------- Export ---------- */
+$("#exportBtn").addEventListener("click",()=>{
+  const sel=state.pages.filter(p=>p.include);
+  if(!sel.length) return;
+  const {jsPDF}=window.jspdf;
+  const [pw,ph]=[sel[0].pw, sel[0].ph];
+  const doc=new jsPDF({orientation: pw>ph?"l":"p", unit:"mm", format:[pw,ph]});
+  sel.forEach((pg,i)=>{
+    if(i>0) doc.addPage([pg.pw,pg.ph], pg.pw>pg.ph?"l":"p");
+    doc.addImage(pg.full,"JPEG",0,0,pg.pw,pg.ph,undefined,"FAST");
+  });
+  let name=$("#filename").value.trim()||"Notizen_A4.pdf";
+  if(!name.toLowerCase().endsWith(".pdf")) name+=".pdf";
+  doc.save(name);
+});
+
+$("#processBtn").addEventListener("click",process);
+</script>
+</body>
+</html>
